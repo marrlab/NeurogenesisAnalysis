@@ -1,0 +1,10 @@
+*~
+*.fig
+*.mexa64
+*.mexmaci64
+simulate_*.m
+doc/out/
+doc/config/Doxyfile
+doc/config/latexextras.sty
+doc/config/mtocpp_filter.sh
+
