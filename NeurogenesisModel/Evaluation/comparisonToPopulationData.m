@@ -19,6 +19,7 @@ opt.order = 1;
 
 opt.addfolderstr = '_AverageModel';
 opt.RUN_N_dir = cd();
+opt.CERENApath = '/Users/lisa.bast/Documents/MATLAB_WD/class_1/Tools/CERENA/examples/neurogenesis/';
 %chose option halfway migration (Daynac et al. observed celly only in first half
 %of SEZ)
 opt.halfwayMigration = true; %NBII migration will be twice as fast which is equivalent to tavelling only half the way

@@ -48,7 +48,7 @@ parVariables = str_rates;
 %in the beginning: there is only 1 cell, somewhere in the stem cell
 %states
 if isempty(initialVals)
-    idx_S = sum(strwcmp(stateVariables,'*S*'));
+    idx_S = sum(strwcmp(str_SV,'*S*'));
     if idx_S == 2
         mu0 = strcat(cell2mat(repmat(strcat(parVariables(end),'/',num2str(n(1)),' ; '),1,n(1))), cell2mat(repmat(strcat('(1-',parVariables(end),')/',num2str(n(2)),' ;'),1,n(2))), repmat('0 ; ',1,sum(n(3:end))));
         mu0 =strcat('[',mu0(1:end-1),']');
@@ -138,13 +138,17 @@ if ~isempty(optOutVec)
                 str_SV_out{id} = strcat(str_SV{l},'_',str_SV{l+1});
                 l=l+2;
                 id=id+1;
+            otherwise %intermediate states
+                str_SV_out{id} = stateVariables{l}(1:end-1);
+                l=l+optOutVec(i);
+                id=id+1;
         end
     end
     str_SV_out=str_SV_out';
 else
     str_SV_out = str_SV;
 end
-if (optqSout==false && optOutVec(1)~=0)
+if (optqSout==false && optOutVec(1)~=1)
     str_SV_out{1}='S';
 end
 SV_sum=strcat(' Sum_',str_SV_out);
@@ -200,6 +204,16 @@ if ~isempty(optOutVec)
                     end
                 end
                 l=l+2;
+            otherwise
+                idx_sV = find(strwcmp(stateVariables,strcat(cellstr(str_SV(l)),'*'))==1);
+                for id=1:length(idx_sV)
+                    if id<length(idx_sV)
+                        oF_str = strcat(oF_str,stateVariables(idx_sV(id)),'+');
+                    else
+                        oF_str = strcat(oF_str,stateVariables(idx_sV(id)));
+                    end
+                end
+                l=l+1;
         end
         if ~isempty(oF_str)
             outputFun = [outputFun;cellstr(oF_str)];

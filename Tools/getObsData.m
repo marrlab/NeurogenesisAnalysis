@@ -9,8 +9,9 @@ switch opt.app
         for i=1:length(opt.dataStates)
             states = strcat(states,opt.dataStates{i}(1));
         end
-
+        cd('../')
         tmpRead = ezread('dataCalzolari_young_and_old_mice.txt','\t');
+        cd(opt.RUN_N_dir)
         time = tmpRead.days.*24; %in hours
         D=[tmpRead.S tmpRead.T tmpRead.B1 tmpRead.B2 tmpRead.B3 tmpRead.B4 tmpRead.B5 tmpRead.N time];
 

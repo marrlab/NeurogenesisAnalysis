@@ -2,7 +2,9 @@ function [R] = plotWeightedParameterAverage(R,opt_2)
 
 map = [1 1 1;% white
        0.6 0.6 0.6]; % dark grey
-plotOpt = 'boxBee'; %'hist'; 
+plotOpt = 'boxplot';%'boxBee'; %'hist'; 
+
+%for boxBee: iosr.install
 
 %% plot histograms:
 figure()
@@ -22,7 +24,7 @@ for dataID=length(R):-1:1
         switch plotOpt
             case 'hist'
                 plotHist(R{dataID}.parOpt_mat(ID,:),[R{dataID}.parMin_vec(ID,:),R{dataID}.parMax_vec(ID,:)],NBins,R{dataID}.rates_str{ID},R{dataID}.par_mean(ID),PM);
-            case 'boxBee'
+            case {'boxBee','boxplot'}
                 if dataID==length(R)
                     switch PM
                         case 'probabilities'
@@ -34,7 +36,12 @@ for dataID=length(R):-1:1
                             parMean = [R{1}.par_log_mean(ID); R{2}.par_log_mean(ID)];
                             parSEM = [R{1}.par_log_SEM(ID); R{2}.par_log_SEM(ID)];
                     end
-                    plotBoxBeePlots(parOpt,[R{dataID}.parMin_vec(ID,:),R{dataID}.parMax_vec(ID,:)],R{dataID}.rates_str{ID},parMean,parSEM,PM);
+                    switch plotOpt
+                        case 'boxBee'
+                            plotBoxBeePlots(parOpt,[R{dataID}.parMin_vec(ID,:),R{dataID}.parMax_vec(ID,:)],R{dataID}.rates_str{ID},parMean,parSEM,PM,[R{1}.w;R{2}.w]);
+                        case 'boxplot'
+                            plotWeightedBoxPlots(parOpt,[R{dataID}.parMin_vec(ID,:),R{dataID}.parMax_vec(ID,:)],R{dataID}.rates_str{ID},PM,[R{1}.w;R{2}.w]);
+                    end
                     hold on;
                 end
         end
@@ -45,6 +52,8 @@ switch plotOpt
         saveFigs(opt_2,'HistogramsOfOptimizedWeightedParameterAverage');
     case 'boxBee'
         saveFigs(opt_2,'BoxBeePlotOfOptimizedWeightedParameterAverage');
+    case 'boxplot'
+        saveFigs(opt_2,'BoxplotOfOptimizedWeightedParameterAverage');
 end
 
 
@@ -52,7 +61,7 @@ end
 
 
 %% plot table of weigthed average of optimized parameters
-r_list = {'r_{act2}','r_{act2}','r_{inact}','r_{div}','r_{B_N}','r_{death}'};
+r_list = {'r_{act2}','r_{inact}','r_{div}','r_{B_N}','r_{death}'};
 R_tab = zeros(2,length(r_list));
 P_tab = zeros(2,9);
 for dataID=1:2
@@ -62,7 +71,7 @@ for dataID=1:2
     P_tab(dataID,:) = [R{dataID}.P_averageAS R{dataID}.P_averageT R{dataID}.P_averageB1];
 end
 %calculate log fold change:
-R_tab = [R_tab; log(R_tab(2,:)./R_tab(1,:))];
+R_tab = [1./R_tab; log((1./R_tab(2,:))./(1./R_tab(1,:)))];
 P_tab = [P_tab; log(P_tab(2,:)./P_tab(1,:))];
 par_names_R = {'mean time for QS to activate','mean time for AS to inactivate','mean time to divide for AS, T & B1','mean time for B2 to migrate','mean time for N to die'};
 par_names_P = {'P(sym self renewal of S)','P(sym differentiation of S)','P(asym division of S)','P(sym self renewal of T)','P(sym differentiation of T)','P(asym division of T)','P(sym self renewal of B1)','P(sym differentiation of B1)','P(asym division of B)'};
@@ -132,7 +141,7 @@ saveFigs(opt_2,'barplotProbabilities_WeightedAverage');
         end
     end
 
-    function [] = plotBoxBeePlots(par_opt_vec,bounds,x_label_str,average_rate,SEM_rate,plotMode)
+    function [] = plotBoxBeePlots(par_opt_vec,bounds,x_label_str,average_rate,SEM_rate,plotMode,w)
         str={'young','old'};
         if strcmp(plotMode,'times')
             if  ~strwcmp(x_label_str,'log(*')
@@ -163,5 +172,24 @@ saveFigs(opt_2,'barplotProbabilities_WeightedAverage');
             plot([id-0.4 id+0.4],[average_rate(id) average_rate(id)],'k','LineWidth',1.5);
             hold on;
         end
+        iosr.statistics.boxPlot(par_opt_vec','weights',w','groupLabels',{'young','old'})
+    end
+
+    function [] = plotWeightedBoxPlots(par_opt_vec,bounds,y_label_str,plotMode,w)
+        str={'young','old'};
+        if strcmp(plotMode,'times')
+            if  ~strwcmp(y_label_str,'log(*')
+                y_label_str = ['log(',y_label_str,')'];
+                bounds=sort(log(bounds));
+            end
+        end
+        plot([0 3],[bounds(1) bounds(1)],'k');
+        hold on;
+        plot([0 3],[bounds(2) bounds(2)],'k');
+        hold on;
+        iosr.statistics.boxPlot(par_opt_vec','weights',w','groupLabels',{'young','old'},'limit',[2.5,97.5],'symbolColor',[0.7 0.7 0.7],'symbolMarker','.','medianColor','k')
+        set(gca,'xticklabel',str) 
+        ylim([bounds(1)-0.05*(bounds(2)-bounds(1)), bounds(2)+0.05*(bounds(2)-bounds(1))])
+        ylabel(y_label_str)
     end
 end

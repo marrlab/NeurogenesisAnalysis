@@ -1,8 +1,8 @@
 function [n,states,rates,optsum,optqSout,optDiv,optTcc,optOutVec,optInitialVals,optAct1_proportional,opt_ract1,opt_pB1,opt_hillcoeffs,opt_halfwayMigration] = getSystemDefinition()
 currentPath = cd();
-cd('../')
-% path = cd;
-% cd([path,'/NeurogenesisModel'])
+cd('../../../../')
+path = cd;
+cd([path,'/NeurogenesisModel'])
 load('settings.mat');
 cd(currentPath);
 

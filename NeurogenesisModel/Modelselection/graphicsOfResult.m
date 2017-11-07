@@ -85,7 +85,12 @@ if strwcmp(opt.app,'*test')
     y_sim_allStates = [];
 end
 
-plotMoments(opt, y_obs, y_obs_all, y_sim, sigma2, t_obs, t_sim);
+f = figure;
+set(f, 'Units', 'normalized', 'Position', [0.2, 0.1, 0.9, 0.65]);
+colStyle = 'grey';
+% colStyle = 'color';
+% col = [153 204 255; 0 51 102]./255
+plotMoments(opt, y_obs, y_obs_all, y_sim, sigma2, t_obs, t_sim, colStyle, []);
 
 % % plot additionally model with intermediate states (erlang distributed
 % % times for cell division, migration and death) 

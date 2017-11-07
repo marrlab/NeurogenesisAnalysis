@@ -27,7 +27,21 @@ ind_iS = 1;
 %index of rates
 i_t = 1; 
 
-idx_S = sum(strwcmp(stateVariables,'*S*'));
+if any(n_interS>1)
+    search_str = cell(size(stateVariables));
+    search_str(:) = {'*S*'};
+    S_states_idx = cellfun(@strwcmp,stateVariables,search_str);
+    S_states = stateVariables(S_states_idx==1);
+    if length(S_states)==sum(n_interS(1:3))
+        idx_S=3;
+    elseif length(S_states)==sum(n_interS(1:2))
+        idx_S=2;
+    else
+        error('reactions are not implemented for specified number of stem cell states!')
+    end
+else
+    idx_S = sum(strwcmp(stateVariables,'*S*'));
+end
 
 if idx_S==2
     %% qS reactions:
@@ -244,7 +258,7 @@ end
         %(R5) T --> B1+B2
         if r_add1~=0
             reaction(ind_r).educt      = sym(stateVariables(ind_iS+n-1));
-            reaction(ind_r).product    = sym([stateVariables(ind_iS+n) stateVariables(ind_iS+n+n_interS(ind_iS+1))]);
+            reaction(ind_r).product    = sym([stateVariables(ind_iS+n) stateVariables(ind_iS+n+n_interS(idx_S-2+i+1))]);
             reaction(ind_r).propensity = r_add1*sym(stateVariables(ind_iS+n-1));                        % pS_2T/tcc*num_inter_states*aS;
             ind_r=ind_r+1;
         end
@@ -252,7 +266,7 @@ end
         %(R6) T --> T+B2
         if r_add2~=0
             reaction(ind_r).educt      = sym(stateVariables(ind_iS+n-1));
-            reaction(ind_r).product    = sym([stateVariables(ind_iS) stateVariables(ind_iS+n+n_interS(ind_iS+1))]);
+            reaction(ind_r).product    = sym([stateVariables(ind_iS) stateVariables(ind_iS+n+n_interS(idx_S-2+i+1))]);
             reaction(ind_r).propensity = r_add2*sym(stateVariables(ind_iS+n-1));                        % pS_2T/tcc*num_inter_states*aS;
             ind_r=ind_r+1;
         end
@@ -260,7 +274,7 @@ end
         %(R7) T --> 2B2
         if r_add3~=0
             reaction(ind_r).educt      = sym(stateVariables(ind_iS+n-1));
-            reaction(ind_r).product    = sym([stateVariables(ind_iS+n+n_interS(ind_iS+1)) stateVariables(ind_iS+n+n_interS(ind_iS+1))]);
+            reaction(ind_r).product    = sym([stateVariables(ind_iS+n+n_interS(idx_S-2+i+1)) stateVariables(ind_iS+n+n_interS(idx_S-2+i+1))]);
             reaction(ind_r).propensity = r_add3*sym(stateVariables(ind_iS+n-1));                        % pS_2T/tcc*num_inter_states*aS;
             ind_r=ind_r+1;
         end

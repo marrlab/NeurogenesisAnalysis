@@ -22,8 +22,8 @@ opt.par_init_threshold = options_par.init_threshold;
 
 %% code parallelization? --> specify number of workers
 %     options_par.comp_type = 'sequential'; options_par.mode = 'visual'; n_workers=[];
-    options_par.comp_type = 'parallel'; options_par.mode = 'visual'; n_workers = 2;
-%     options_par.comp_type = 'parallel'; options_par.mode = 'text'; n_workers = 10;
+%     options_par.comp_type = 'parallel'; options_par.mode = 'visual'; n_workers = 2;
+    options_par.comp_type = 'parallel'; options_par.mode = 'text'; n_workers = 10;
 
 
 % Parameters
@@ -60,7 +60,10 @@ par_max=[par_max   1    1 ];
 
 if numNstates==1
     par_min=[par_min repmat(1/25,1,num_div)  1e-3*ones(1,m) 1/1000 1/(5.5*30*24)];
+%     par_min=[par_min repmat(1/50,1,num_div)  1e-3*ones(1,m) 1/1000 1/(3*30*24)];
+
     par_max=[par_max repmat(1/15,1,num_div)  0.999*ones(1,m) 1/10  1/(0.5*30*24)];
+%     par_max=[par_max repmat(1/15,1,num_div)  0.999*ones(1,m) 1/10  1/10];
 elseif numNstates==2
     par_min=[par_min repmat(1/25,1,num_div)  1e-3*ones(1,m) 1/1000 1/(40*24) 0.3];
     par_max=[par_max repmat(1/15,1,num_div)  0.999*ones(1,m) 1/10  1/(1*24) 0.7];

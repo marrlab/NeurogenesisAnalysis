@@ -16,7 +16,7 @@ switch opt.app
     case 'neurogenesis'
         % which data set should be used?
         opt.dataSet = 'young adult';
-        opt.dataSetSelection = 'reduced'; %if 1st and 3rd time point should be excluded for young data fit
+        opt.dataSetSelection = 'complete';%'reduced'; %if 1st and 3rd time point should be excluded for young data fit
 %         opt.dataSet = 'mid age adult';
 end
 
@@ -146,7 +146,7 @@ if opt.save==true
     opt.addfolderstr = strcat('_modelFits/',opt.dataSet,opt.dataSetSelection,'/');
 end
 
-opt.plot = true;
+opt.plot = false;
 
 if opt.plot==true
     % should the covariances or correlations be plotted?

@@ -71,9 +71,9 @@ end
 div_str=div_str(1:end-2);
 
 n_str = '';
-if any(opt.n)>1
+if any(opt.n>1)
     for i=1:length(opt.n)
-        n_str = [n_str, num2str(opt.n(i)),'_'];
+        n_str = [n_str, num2str(opt.n(i))];%,'_'];
     end
     n_str = n_str(1:end-1);
 end

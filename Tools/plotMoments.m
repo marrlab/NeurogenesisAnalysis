@@ -1,15 +1,11 @@
-function [k,m,m_names] = plotMoments(opt, y_obs, y_obs_all, y_sim, sigma2, t_obs, t_sim)
+function [k,m,m_names] = plotMoments(opt, y_obs, y_obs_all, y_sim, sigma2, t_obs, t_sim, colStyle, col)
 set(0,'defaultLineLineWidth', 2)
-
-opt_col = false;
 
 %times in days
 t_sim = t_sim/24;
 if ~isempty(t_obs)
     t_obs = t_obs/24;
 end
-f = figure;
-set(f, 'Units', 'normalized', 'Position', [0.2, 0.1, 0.9, 0.65]);
 
 if strwcmp(opt.app,'*test')
     y_sim_theo = opt.y_sim_theo;
@@ -22,7 +18,7 @@ if sum(opt.outVec>0)==3
         outNames=opt.dataStates';
     end
 else
-    if strwcmp(opt.app,'*test') || strcmp(opt.app,'Tree Test')
+    if strwcmp(opt.app,'*test') || strcmp(opt.app,'Tree Test') || isempty(y_obs)
         num_S = sum(strwcmp(opt.modelStates,'*S*'));
         outNames=opt.modelStates';
     else
@@ -119,14 +115,6 @@ for j=1:length(m_names)%n_y
             end
         case'band'
             %% error bands with filling
-            if opt_col == true 
-                %specify colors
-                c_darkblue = [2 109 155]./255;
-                c_verydarkblue = [2 84 119]./255;
-                c_lightblue =[198 233 247]./255;
-                c_red = [171 15 62]./255;
-                c_cyan = [117 242 255]./255;
-            end
             if ~isempty(y_obs)
                     s_up = y_obs(:,j)+2*sqrt(sigma2(:,j));
                 switch opt.plotmode
@@ -147,24 +135,26 @@ for j=1:length(m_names)%n_y
                 if a<b; t_obs=t_obs'; end
                 T_obs=[t_obs',fliplr(t_obs')];                %#create continuous x value array for plotting
                 S_obs=[s_down',fliplr(s_up')];              %#create y values for out and then back
-                if opt_col == true
-                    h_fill = fill(T_obs,S_obs,c_lightblue);
+                if ~strcmp(colStyle,'grey')
+                    h_fill = fill(T_obs,S_obs,col(1,:));
                 else
                     h_fill = fill(T_obs,S_obs,[220 220 220]./256);
                 end
-                set(h_fill,'edgecolor','white');
+                set(h_fill,'edgecolor',[220 220 220]./256);
+                set(h_fill,'edgealpha',.25);
+                set(h_fill,'facealpha',.25)
                 hold on;
-                if opt_col == true
-                    h1=plot(t_obs,s_up,'-.','Color',c_darkblue,'LineWidth',1); 
-                    hold on;
-                    h2=plot(t_obs,s_down,'-.','Color',c_darkblue,'LineWidth',1); 
-                    if j==1; h=[h, h1]; names{length(h)}='estimated +/- 2\sigma of obs. moments'; end;
-                    hold on;
-                end
+%                 if  ~strcmp(colStyle,'grey')
+%                     h1=plot(t_obs,s_up,'-.','Color',col(2,:),'LineWidth',1); 
+%                     hold on;
+%                     h2=plot(t_obs,s_down,'-.','Color',col(2,:),'LineWidth',1); 
+%                     if j==1; h=[h, h1]; names{length(h)}='estimated +/- 2\sigma of obs. moments'; end;
+%                     hold on;
+%                 end
             end
             %% model fit:
-            if opt_col == true
-                h4=plot(t_sim,y_sim(:,j),'Color',c_red);
+            if ~strcmp(colStyle,'grey')
+                h4=plot(t_sim,y_sim(:,j),'Color',col(2,:));
             else
                 h4=plot(t_sim,y_sim(:,j),'k');
             end
@@ -175,8 +165,8 @@ for j=1:length(m_names)%n_y
 
             %% data (translated to moments)
             if ~isempty(y_obs)
-                if opt_col == true
-                    h3=plot(t_obs,y_obs(:,j),'d','MarkerSize',7,'MarkerEdgeColor',c_verydarkblue, 'MarkerFaceColor',c_cyan);
+                if ~strcmp(colStyle,'grey')
+                    h3=plot(t_obs,y_obs(:,j),'o','MarkerSize',6,'MarkerEdgeColor',col(2,:), 'MarkerFaceColor',col(1,:));
                 else
                     h3=plot(t_obs,y_obs(:,j),'o','MarkerSize',3,'MarkerEdgeColor','k', 'MarkerFaceColor','k');
                 end
@@ -184,9 +174,9 @@ for j=1:length(m_names)%n_y
                 hold on;
             end
             if strwcmp(opt.app,'*test')
-                if opt_col == true
+                if ~strcmp(colStyle,'grey')
         %         h5=plot(t_sim(50:end),y_sim_theo(50:end,j),'g');
-                  h5=plot(t_sim,y_sim_theo(:,j),'Color',c_darkblue);
+                  h5=plot(t_sim,y_sim_theo(:,j),'Color',col(2,:));
                 else
                   h5=plot(t_sim,y_sim_theo(:,j),'Color',[100 100 100]./256);  
                 end
@@ -203,8 +193,8 @@ for j=1:length(m_names)%n_y
                         case 'bar'
                             h6=scatter((y_obs_all(:,end)+jitterValuesX)/24,y_obs_all(:,j),20,'k','.');%,'jitter','on','jitterAmount',0.8);
                         case 'band'
-                            if opt_col == true
-                                h6=scatter((y_obs_all(:,end)+jitterValuesX)/24,y_obs_all(:,j),20,c_darkblue,'o');%,'jitter','on','jitterAmount',0.8);
+                            if ~strcmp(colStyle,'grey')
+                                h6=scatter((y_obs_all(:,end)+jitterValuesX)/24,y_obs_all(:,j),15,col(2,:),'o');%,'jitter','on','jitterAmount',0.8);
                             else
                                 h6=scatter((y_obs_all(:,end)+jitterValuesX)/24,y_obs_all(:,j),20,'k','.');%,'jitter','on','jitterAmount',0.8);
                             end
@@ -223,6 +213,26 @@ for j=1:length(m_names)%n_y
             lh=legend(sh, h, names);
             set(lh,'position',p);
             axis(sh,'off');
+        end
+        switch j
+            case 1
+                ylim([0 40])
+            case 2
+                ylim([0 150])
+            case 3
+                ylim([0 200])
+            case 4
+                ylim([-200 400])
+            case 5
+                ylim([-200 200])
+            case 6
+                ylim([-300 300])
+            case 7
+                ylim([-2000 4000])
+            case 8
+                ylim([-1000 2000])
+            case 9
+                ylim([-5000 10000])
         end
 end
 

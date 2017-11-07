@@ -15,11 +15,11 @@ addpath(genpath([c1_path,'/Tools/']))
 addpath(genpath([c1_path,'/Tools/CERENA/examples/neurogenesis']))
 
 
-MS_path = [c1_path,'/NeurogenesisModel/Modelselection/results_modelFits'];
+MS_path = [c1_path,'/NeurogenesisModel/Modelselection/results_modelFits_oldParBoundaries'];
 cd(MS_path)
 load('result_modelselection.mat','R')
 cd(cP);
-resultsPath = [cP,'/results_AverageModel'];
+resultsPath = [cP,'/results_AverageModel_oldBoundaries2'];
 if exist(resultsPath, 'dir')==0
     mkdir(resultsPath);
 end
