@@ -1,10 +1,7 @@
-function [y,Sy,status] = sim__N(theta,t,opt)
+function [y,Sy,status] = sim__N(theta_lin,t,opt)
 
 
 %% Model % Simulation
-%transform theta back to linear scale
-theta_lin = transformParBack(theta, opt);
-
 file_str = strcat(opt.simName,'(t,theta_lin)');
 [status,~,~,y,~,Sy] = eval(file_str);
 

@@ -1,8 +1,8 @@
-function [n,states,rates,optsum,optqSout,optDiv,optTcc,optOutVec,optInitialVals,optAct1_proportional,opt_ract1,opt_pB1,opt_hillcoeffs,opt_halfwayMigration] = getSystemDefinition()
+function [n,states,rates,optsum,optqSout,optDiv,optTcc,optOutVec,optInitialVals,optAct1_proportional,opt_ract1,opt_pB1,opt_hillcoeffs,opt_halfwayMigration,opt_Ndeath,opt_NB2death,opt_NB3death,opt_dataSet,opt_identicalRates_str] = getSystemDefinition()
 currentPath = cd();
-cd('../../../../')
-path = cd;
-cd([path,'/NeurogenesisModel'])
+% cd('/Users/lisa.bast/Documents/MATLAB_WD/class_1/NeurogenesisModel')
+cd('/Users/lisa.bast/Documents/MATLAB_WD/class_1/NeurogenesisModel_NEW')
+% cd('/home/icb/lisa.bast/matlab/class_1/NeurogenesisModel_NEW')
 load('settings.mat');
 cd(currentPath);
 
@@ -28,6 +28,10 @@ opt_ract1 = opt.r_act1;
 opt_pB1 = opt.pB1;
 opt_hillcoeffs = opt.hillcoeffs;
 opt_halfwayMigration = opt.halfwayMigration;
-
+opt_Ndeath = opt.Ndeath;
+opt_NB2death = opt.NB2death;
+opt_NB3death = opt.NB3death;
+opt_dataSet = opt.dataSet;
+opt_identicalRates_str = opt.identicalRates_str;
 end
 

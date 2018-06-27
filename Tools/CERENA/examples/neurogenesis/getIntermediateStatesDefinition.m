@@ -34,7 +34,6 @@ for m=1:n_states
         end
         stateVariables = [stateVariables; strcat(str_SV(m),num2str(k))];
     end
-
 end
 
 dV=strcat(stateVariables,{' '});
@@ -138,6 +137,10 @@ if ~isempty(optOutVec)
                 str_SV_out{id} = strcat(str_SV{l},'_',str_SV{l+1});
                 l=l+2;
                 id=id+1;
+            case 3
+                str_SV_out{id} = strcat(str_SV{l},'_',str_SV{l+1},'_',str_SV{l+2});
+                l=l+3;
+                id=id+1;
             otherwise %intermediate states
                 str_SV_out{id} = stateVariables{l}(1:end-1);
                 l=l+optOutVec(i);
@@ -204,6 +207,16 @@ if ~isempty(optOutVec)
                     end
                 end
                 l=l+2;
+            case 3 
+                idx_sV = [find(strwcmp(stateVariables,strcat(cellstr(str_SV(l)),'*'))==1); find(strwcmp(stateVariables,strcat(cellstr(str_SV(l+1)),'*'))==1) ; find(strwcmp(stateVariables,strcat(cellstr(str_SV(l+2)),'*'))==1)];
+                for id=1:length(idx_sV)
+                    if id<length(idx_sV)
+                        oF_str = strcat(oF_str,stateVariables(idx_sV(id)),'+');
+                    else
+                        oF_str = strcat(oF_str,stateVariables(idx_sV(id)));
+                    end
+                end
+                l=l+3;
             otherwise
                 idx_sV = find(strwcmp(stateVariables,strcat(cellstr(str_SV(l)),'*'))==1);
                 for id=1:length(idx_sV)

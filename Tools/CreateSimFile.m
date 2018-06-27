@@ -36,6 +36,11 @@ else
     pop_str = '';
 end
 
+dS_str=[];
+if strcmp(opt.dataSet,'both')
+    dS_str = '2_';
+end
+
 % states_str = strcat(num2str(sum(opt.outVec>0)),'o_',num2str(length(opt.modelStates)),'i_2B_');
 states_str = strcat(num2str(sum(opt.outVec>0)),'o_','2B_');
 
@@ -77,12 +82,27 @@ if any(opt.n>1)
     end
     n_str = n_str(1:end-1);
 end
+if opt.Ndeath 
+    d_str = '_Nd';
+elseif opt.NB2death
+    d_str = '_B2';
+elseif opt.NB3death
+    d_str = '_B3';
+end
+if strcmp(opt.dataSet,'both')
+    d_str = [d_str, 'b'];
+end
 ad_str = '';
 if ~isempty(opt.hillcoeffs)
-    ad_str = '_aD';
+    ad_str = 'aD';
+    if length(opt.ageDepPars)==2
+        A = num2str(opt.ageDepPars);
+        A = A(~isspace(A));
+        ad_str = [ad_str,A];
+    end
 end
 
-modelName =strcat(order_str,D_decrease_str,pop_str,ract1_str,pB1_str,states_str,div_str,sum_str,qSout_str,BC_str,n_str,ad_str);%how model is named when created by cerena
+modelName =strcat(order_str,D_decrease_str,pop_str,dS_str,ract1_str,pB1_str,states_str,div_str,sum_str,qSout_str,BC_str,n_str,d_str,ad_str);%how model is named when created by cerena
 opt.foldername = modelName;
 opt.simName = ['simulate_',modelName]; %how I can call model later
 

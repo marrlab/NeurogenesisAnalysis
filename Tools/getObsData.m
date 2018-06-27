@@ -20,7 +20,7 @@ switch opt.app
                 if strcmp(opt.dataSetSelection,'reduced')
                     selVals = tmpRead.age<3 & tmpRead.days~=7 & tmpRead.days~=35; %without 1st and 3rd time point
                 else
-                    selVals = tmpRead.age<3; %& tmpRead.days~=35; %without 3rd time point
+                    selVals = tmpRead.age<3; %complete
                 end
             case 'mid age adult'
                 selVals = tmpRead.age>3;
