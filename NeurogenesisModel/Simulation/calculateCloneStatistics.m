@@ -1,4 +1,4 @@
-function [cS] = calculateCloneStatistics(cS,subclone_IDs,subclone_root_tree,birthTimes,deathTimes,type)
+function [cS] = calculateCloneStatistics(cS,subclone_IDs,subclone_root_tree,birthTimes,deathTimes,type,CT_str,opt)
 % cS.subcloneCount
 cS.inactiveClones = false;
 cS.inactiveSubcloneCount = 0;
@@ -47,8 +47,12 @@ if cS.subcloneCount >0
         T = removeQSifNoKid(T,T);
             
         [G,EP_idx] = getGenerations(De);%corresponds to cell ID in tree
-        B_max = getTreeMax(B);
         
+        first_dividing_aS_id = getfirstDividingAS(T);
+        last_aS_id = getLastAS(T);
+        
+        %for activity duration calculation: difference between aS birth
+        %time and NBI death time = NBII birth time
         NB2_B_max = getTreeMax_OfType(B,T,'b'); %birthtime of last NBII in subclone
         % if subclone has not observed NB II take birth time of last
         % observed NB I
@@ -65,22 +69,32 @@ if cS.subcloneCount >0
                 end
             end
         end
-        
-        De_max = getTreeMax(De);
-        last_aS_id = getLastAS(T);
-        first_dividing_aS_id = getfirstDividingAS(T);
-%         B_min = getTreeMin(B);
+        cS.activityDuration.days(sc_id) = (NB2_B_max - B.get(first_dividing_aS_id))/24;
         De_min = getTreeMin(De);
+        if opt.Ndeath
+            De_max = getTreeMax(De);
+            cS.subclonalLifespan(sc_id) = (De_max - De_min)/24;
+        else
+            B_max = getTreeMax(B);
+            cS.subclonalLifespan(sc_id) = (B_max - De_min)/24;
+        end
+        
+        
+%         B_min = getTreeMin(B);
+        
 
         %vector:
 %         cS.activityDuration.days(sc_id) = max(0,(NB2_B_max - B_min)/24);
-        cS.activityDuration.days(sc_id) = (NB2_B_max - B.get(first_dividing_aS_id))/24;
+        
 %         cS.activityDuration.generations(sc_id) = max(G)-1;
-        cS.subclonalLifespan(sc_id) = (De_max - De_min)/24;
+
 %         if cS.subclonalLifespan(sc_id)>100
 %             disp('moment mal...')
 %         end
         cS.subclonalAmplification(sc_id) = length(EP_idx);%number of cells resulting from root aNSC (number of end points)
+        if any(cS.subclonalAmplification==1)
+            disp('moment mal...subclonal amplification')
+        end
         if cS.activeSubcloneCount>1 && sc_id>1
             idx_parent_subclone = subclone_root_tree.get(subclone_root_tree.getparent(sc_id));
             cS.subcloneGenerationFrequency(sc_id)=1/((birthTimes.get(subclone_IDs(sc_id))-birthTimes.get(idx_parent_subclone))/24);
@@ -89,10 +103,16 @@ if cS.subcloneCount >0
 %             end
         end
         cS.subcloneExpansionDuration(sc_id) = (De.get(last_aS_id)-B.get(first_dividing_aS_id))/24; %time last aNSC differentiated - birth time of root aNSC
+        if cS.subcloneExpansionDuration(sc_id)==0
+            disp('zero subclone expansion duration')
+        end
         %matrix
         cS.subcloneBranchLength{sc_id} = G(EP_idx);
-        cS.TAP_div.raw{sc_id} = getNumCelldivs(T,'T',EP_idx);% value per branch
-        cS.NBI_div.raw{sc_id} = getNumCelldivs(T,'B',EP_idx);% value per branch
+        cS.TAP_div.raw{sc_id} = getNumCelldivs(T,'T',EP_idx,CT_str);% value per branch
+        if cS.TAP_div.raw{sc_id}>=10
+           disp('Moment mal: TAPS!') 
+        end
+        cS.NBI_div.raw{sc_id} = getNumCelldivs(T,'B',EP_idx,CT_str);% value per branch
 
         %vector
         if isempty(cS.TAP_div.raw{sc_id})
@@ -114,8 +134,13 @@ if cS.subcloneCount >0
     birthTimes = removeQSifNoKid(birthTimes,type);
     if nnodes(birthTimes)>=subclone_IDs(1)
         deathTimes = removeQSifNoKid(deathTimes,type);
-        deathTimes_max = getTreeMax(deathTimes);
-        cS.clonalLifespan = (deathTimes_max - birthTimes.get(subclone_IDs(1)))/24;
+        if opt.Ndeath
+            deathTimes_max = getTreeMax(deathTimes);
+            cS.clonalLifespan = (deathTimes_max - birthTimes.get(subclone_IDs(1)))/24;
+        else
+            birthTimes_max = getTreeMax(birthTimes);
+            cS.clonalLifespan = (birthTimes_max - birthTimes.get(subclone_IDs(1)))/24;
+        end
 %     if cS.clonalLifespan>100
 %         disp('moment mal...')
 %     end

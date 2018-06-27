@@ -1,5 +1,5 @@
 %author: Lisa Bast
-%latest update: 21th September 2017
+%latest update: 29th May 2018
 
 %moment models describing the process of neurogenesis with 7 compartments
 %assuming 4 different division strategies for 3 dividing cell types --> 64
@@ -20,16 +20,24 @@ opt = setPaths();
 
 %get application settings
 opt = getAppSettings(opt);
-    
+
 for i=1:4 %index for division strategy S (1: Asymmetric, 2: Symmetric, 3: Constrained, 4: Unconstrained)
-    for j=1:4 % index for division strategy T (1: Asymmetric, 2: Symmetric, 3: Constrained, 4: Unconstrained)
-        for k=1:4% index for division strategy B (1: Asymmetric, 2: Symmetric, 3: Constrained, 4: Unconstrained)
+    for j=1:4 %index for division strategy T (1: Asymmetric, 2: Symmetric, 3: Constrained, 4: Unconstrained)
+        for k=1:4 %index for division strategy B (1: Asymmetric, 2: Symmetric, 3: Constrained, 4: Unconstrained)
             opt = getModelSettings_selection(i,j,k,opt);
             cd('../')
             save('settings.mat');
             cd(opt.RUN_N_dir);
             %% DATA
-            data = getObsData(opt);
+            if strcmp(opt.dataSet,'both')
+                opt_m=opt;
+                opt_m.dataSet='young adult';
+                data.y = getObsData(opt_m);
+                opt_m.dataSet='mid age adult';
+                data.o = getObsData(opt_m);
+            else
+                data = getObsData(opt);
+            end
             %% DEFINITION OF PARAMETER ESTIMATION PROBLEM
             [parameters, options_par, opt, n_workers] = getOptimizationSettings(opt);
 
@@ -38,7 +46,7 @@ for i=1:4 %index for division strategy S (1: Asymmetric, 2: Symmetric, 3: Constr
             %% Log-likelihood function
             logL = @(theta) logL__N(theta,data,opt);
             % test log-Likelihood function
-            logLtest(parameters,opt,logL)
+%             logLtest(parameters,opt,logL)
 
             %% parameter inference
             [parameters] = optimizationProc(options_par,parameters,opt,logL,n_workers);
@@ -61,7 +69,11 @@ for i=1:4 %index for division strategy S (1: Asymmetric, 2: Symmetric, 3: Constr
                 result.BIC=inf;
             else
                 %calculate AIC and BIC
-                [result.AIC,result.AIC_corrected, result.BIC] = getModelSelectionScores(parameters.name,data.ym,parameters.MS.logPost(1));
+                if strcmp(opt.dataSet,'both')
+                    [result.AIC,result.AIC_corrected, result.BIC] = getModelSelectionScores(parameters.name,[data.y.ym;data.o.ym],parameters.MS.logPost(1));
+                else
+                    [result.AIC,result.AIC_corrected, result.BIC] = getModelSelectionScores(parameters.name,data.ym,parameters.MS.logPost(1));
+                end
             end
 
             %% save workspace variables and figures
@@ -74,5 +86,4 @@ for i=1:4 %index for division strategy S (1: Asymmetric, 2: Symmetric, 3: Constr
         end
     end
 end
-
 %next: RUN_N_getModelselectionResults()

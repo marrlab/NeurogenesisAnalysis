@@ -1,41 +1,42 @@
-function [y_min_r,y_max_r,n,s] = estimateHillCoeffs(theta_young,theta_old,t_young,t_old,par_min,par_max,name)
-%boundaries for parameters
-lb=[par_min                       max([theta_old theta_young])]; 
-ub=[min([theta_old theta_young])  par_max                     ];
-%guess
-x0=[min([theta_old theta_young]) max([theta_old theta_young])]; 
+function [y_min,y_max,n_r,s_r] = estimateHillCoeffs(theta_young,theta_old,t_young,t_old,name)
 
-% s=1/((t_old+t_young)/2);
-s=1/((t_old+t_young)*2/3);
-n=6;
-% n=2;
+y_min = min([theta_young,theta_old]);
+y_max = max([theta_young,theta_old]);
+
+%boundaries for parameters
+lb=[1/t_old    1]; 
+ub=[1/t_young  10];
+%guess
+x0=[1/((t_old+t_young)/2) 5]; 
 if theta_old>theta_young
-    n=n*(-1);
+    lb_old=lb(end);
+    lb(end) = ub(end)*(-1);
+    ub(end) = lb_old*(-1);
+    x0(end) = x0(end)*(-1);
 end
 
 %objective function
-f = @(par) Diff2Hillfun(par,n,s,theta_young,theta_old,t_young,t_old);
+f = @(par) Diff2Hillfun(par,y_min,y_max,theta_young,theta_old,t_young,t_old);
 
 [result_par] = lsqnonlin(f,x0,lb,ub);
    
-y_min_r=result_par(1);
-y_max_r=result_par(2);
-
+s_r=result_par(1);
+n_r=result_par(2);
 
 % figure();
 % plot([(t_young) (t_old)],[theta_young theta_old],'*');
 % hold on;
 % a=0:0.1:24*30*24;
-% plot(a,(y_max_r-y_min_r)./((a*s).^n+1)+y_min_r);
-% axis([0 24*30*24 0 max(y_max_r,0.1)]);
+% plot(a,(y_max-y_min)./((a*s_r).^n_r+1)+y_min);
+% axis([0 24*30*24 0 max(y_max,0.1)]);
 % xlabel('age');
 % ylabel('theta(age)');
 % title(name);
 end
 
-function D2H = Diff2Hillfun(par,n,s,theta_young,theta_old,t_young,t_old)
-    y_min = par(1);
-    y_max = par(2);
+function D2H = Diff2Hillfun(par,y_min,y_max,theta_young,theta_old,t_young,t_old)
+    s = par(1);
+    n = par(2);
     D2H(1) = (y_max-y_min)/((t_young*s)^n+1)+y_min - theta_young;
     D2H(2) = (y_max-y_min)/((t_old*s)^n+1)+y_min - theta_old;
 end

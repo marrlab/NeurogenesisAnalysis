@@ -24,7 +24,7 @@ addpath(genpath([c1_path,'/Tools/CERENA/examples/neurogenesis']))
 OPT.save = true;
 
 % get important variables from MS result:
-MS_path = [c1_path,'/NeurogenesisModel/Modelselection/results_modelFits'];
+MS_path = [c1_path,'/NeurogenesisModel/Modelselection/results_modelFits_NB3death'];
 cd(MS_path)
 load('result_modelselection.mat','R')
 cd(cP);
@@ -35,7 +35,11 @@ end
 
 %% set up model used fot simuations
 %get options for most general model
-sim_model = 'S_astS__T_astS__B_astS';
+if sum(strwcmp(R{1}.OPT{1}.modelStates,'B*'))==3
+    sim_model = 'S_astS__T_astS__B_astS_NB3';
+else
+    sim_model = 'S_astS__T_astS__B_astS';
+end
 opt = R{1}.OPT{strcmp(R{1}.model_str,sim_model)};
 
 %get weighted average parameters, parameter boundaries and names
@@ -48,32 +52,31 @@ theta{2} = R{2}.par_mean(idx);
 dataSet = {'young adult','mid age adult'};
 
 %% (1) SSA simulations and comparison with data
+opt.RUN_N_dir = [c1_path,'/NeurogenesisModel/Modelselection'];
 OPT.plotRatios = true; %for ssa plot
 OPT.Nsim = 500; %number of total SSA simulations
 
 time_vec = 0:24:2*30*24;
-ssa_x = run_SSA(theta,opt,OPT,time_vec,dataSet);
+% ssa_x = run_SSA(theta,opt,OPT,time_vec,dataSet);
 
 %% (2) tree simulation and clonal statistics calcuation
 %specify (and plot) distirbution of times:
 optDistr='erlang';
 % optDistr='exp';  
-%plotDistributionOfTimes(dataSet,opt.rates,theta,optDistr,OPT)
+% plotDistributionOfTimes(dataSet,opt.rates,theta,optDistr,OPT)
 
 %specify option:
-% optPlot ='tree'; 
-optPlot = 'statistics'; 
+optPlot ='tree'; 
+% optPlot = 'statistics'; 
 % optPlot = 'checkTreeSimulation';
-experimentalDesign=true;
-
+experimentalDesign=false;
 if experimentalDesign==false
     for k=1:length(dataSet)
         switch optPlot
             case 'tree'
-                Nsim = 10;
+                Nsim = 50;
                 Tsim = 2*30*24; %2 months 
             case 'statistics'
-                
                 Nsim=1000;
                 Tsim = 100*24; %100 days
             otherwise
@@ -81,12 +84,51 @@ if experimentalDesign==false
                 Tsim=[0:20:100].*24; %days
         end
         if k==1
-            [cells{k},~,cs1] = simulateResultingTrees(k,theta,opt,OPT.resultsPath,Nsim,Tsim,optDistr,optPlot,OPT.save);
+            data_times1 = [7,21,35,56].*24;
+            [cells{k},~,cs1,cellFrequency1,cellNumbers1] = simulateResultingTrees(k,theta,opt,OPT.resultsPath,Nsim,Tsim,optDistr,optPlot,OPT.save,data_times1);
         else
-            [cells{k},~,cs2] = simulateResultingTrees(k,theta,opt,OPT.resultsPath,Nsim,Tsim,optDistr,optPlot,OPT.save);
+            data_times2 = [21,56].*24;
+            [cells{k},~,cs2,cellFrequency2,cellNumbers2] = simulateResultingTrees(k,theta,opt,OPT.resultsPath,Nsim,Tsim,optDistr,optPlot,OPT.save,data_times2);
         end
     end
-
+%     if strcmp(optPlot,'tree')
+%         for round=1:2
+%             %write .txt file for pie chart plots (python) 
+%             cd('/Users/lisa.bast/Documents/courses/Python Data Visualisation Course /data_files');
+%             switch round
+%                 case 1
+%                     FileName='dataSimulated_young_and_old_mice_frequency.txt';
+%                     SimData1 = cellFrequency1;
+%                     SimData2 = cellFrequency2;
+%                 case 2
+%                     FileName='dataSimulated_young_and_old_mice_numbers.txt';
+%                     SimData1 = cellNumbers1;
+%                     SimData2 = cellNumbers2;
+%             end
+%             F_new = textread(FileName, '%s', 'delimiter', '\n');
+%             %['days','T','B','N','cloneID','age']
+% 
+%             for i=1:size(SimData1,1)
+%                 for j=1:size(SimData1{i},1)
+%                     F_new(1+(i-1)*size(SimData1{i},1)+j,1) = {sprintf('%.6f\t',[data_times1(i),SimData1{i}(j,:),2])};
+%                 end
+%             end
+%             for i=1:size(SimData2,1)
+%                 for j=1:size(SimData2{i},1)
+%                     F_new(1+(size(SimData1,1)-1)*size(SimData1{1},1)+size(SimData1{1},1)+(i-1)*size(SimData2{i},1)+j,1) = {sprintf('%.6f\t',[data_times2(i),SimData2{i}(j,:),12])};
+%                 end
+%             end
+% 
+%             FID = fopen(FileName, 'wb');
+%             if FID < 0 
+%                 error('Cannot open file.'); 
+%             end
+%             fprintf(FID, '%s\n', F_new{:});
+%             fclose(FID);
+%             cd(cP);
+%         end
+%     end
+    
     %check if tree simulations agree with model
     if strcmp(optPlot,'checkTreeSimulation')
         %adapt model settings:

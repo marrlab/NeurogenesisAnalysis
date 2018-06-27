@@ -4,7 +4,7 @@ while ~isempty(idx_check_list)
     idx = T.getchildren(idx_check_list(1));
     for i=1:length(idx)
         child_type = T.get(idx(i));
-        if strcmp(child_type,'A')
+        if strcmp(child_type,'A')||strcmp(child_type,'Q')
             idx_check_list = [idx_check_list, idx(i)];
         end
     end

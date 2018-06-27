@@ -1,4 +1,4 @@
-function [R] = plotWeightedParameterAverage(R,opt_2)
+function [R] = plotWeightedParameterAverage(R,opt_2,NB2_str)
 
 map = [1 1 1;% white
        0.6 0.6 0.6]; % dark grey
@@ -61,7 +61,11 @@ end
 
 
 %% plot table of weigthed average of optimized parameters
-r_list = {'r_{act2}','r_{inact}','r_{div}','r_{B_N}','r_{death}'};
+if strcmp(NB2_str,'_NB3')
+    r_list = {'r_{act2}','r_{inact}','r_{div}','r_{B_N}','p_{N}'};
+else
+    r_list = {'r_{act2}','r_{inact}','r_{div}','r_{B_N}','r_{death}'};
+end
 R_tab = zeros(2,length(r_list));
 P_tab = zeros(2,9);
 for dataID=1:2
@@ -71,9 +75,19 @@ for dataID=1:2
     P_tab(dataID,:) = [R{dataID}.P_averageAS R{dataID}.P_averageT R{dataID}.P_averageB1];
 end
 %calculate log fold change:
-R_tab = [1./R_tab; log((1./R_tab(2,:))./(1./R_tab(1,:)))];
+if strcmp(NB2_str,'_NB3')
+    R_tab = [1./R_tab(:,1:end-1) R_tab(:,end); log((1./R_tab(2,1:end-1))./(1./R_tab(1,1:end-1))) log(R_tab(2,end)./R_tab(1,end))];
+else
+    R_tab = [1./R_tab; log((1./R_tab(2,:))./(1./R_tab(1,:)))];
+end
 P_tab = [P_tab; log(P_tab(2,:)./P_tab(1,:))];
-par_names_R = {'mean time for QS to activate','mean time for AS to inactivate','mean time to divide for AS, T & B1','mean time for B2 to migrate','mean time for N to die'};
+if strcmp(NB2_str,'_NB2')
+    par_names_R = {'mean time for QS to activate','mean time for AS to inactivate','mean time to divide for AS, T & B1','mean time for B2 to migrate','mean time for NB2 to die'};
+elseif strcmp(NB2_str,'_NB3')
+    par_names_R = {'mean time for QS to activate','mean time for AS to inactivate','mean time to divide for AS, T & B1','mean time for B2 to migrate','mean probability for NB to become N'};
+else
+    par_names_R = {'mean time for QS to activate','mean time for AS to inactivate','mean time to divide for AS, T & B1','mean time for B2 to migrate','mean time for N to die'};
+end
 par_names_P = {'P(sym self renewal of S)','P(sym differentiation of S)','P(asym division of S)','P(sym self renewal of T)','P(sym differentiation of T)','P(asym division of T)','P(sym self renewal of B1)','P(sym differentiation of B1)','P(asym division of B)'};
 plotTableOfOptimizedWeightedAverage(P_tab',par_names_P)
 plotTableOfOptimizedWeightedAverage(R_tab',par_names_R)

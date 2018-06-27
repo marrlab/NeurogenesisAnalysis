@@ -1,50 +1,70 @@
-function [cells,AK,cloneStats] = simulateResultingTrees(k_ID,par,opt,resultsPath,Ntrees,obsTimes,optDistr,optPlot,optSave)
+function [cells,AK,cloneStats,cellFrequency,cellNumbers] = simulateResultingTrees(k_ID,par,opt,resultsPath,Ntrees,obsTimes,optDistr,optPlot,optSave,obsTimesFrequency)
 %author: Lisa Bast
-%date last checked: 28.09.17
-%% description: simulates trees according to birth-death process 
-% all possible transitions for a certain cell type are shown in the model scheme
-%cell is first randomly chosen to be dS, qS or aS
-%depending on current cell, the times for activation and/or inactivation and/or cell division and/or migration and/or cell death are randomly drawn
-%from an exponential or erlang distribution with mean equal to par.
-%if several transitions are possible from the current cell type (e.g. for aS
-%inactivation to qS or next cell division would be the possible transitions),
-%the transition belonging to the randomly drawn time that is shortest
-%occurs.
-%for cell division transitions: decision how the cell divides is made according to probabilities for asymmetric,
-%symmetric self-renewal and symmetric differentiation.
-%this way 4 tree structures are generated which store cell types, their birth
-%times, death times and division times ('type','birthTimes','deathTimes','divTimes')
-%of the cells belonging to a certain tree.
-%cells gives a matrix in which each row gives the number of cells living at
-%the observed time (obsTime) for each cell type.
-%cloneStats contains genealogical metrics calculated based on all trees
-%simulated during function call
+%date: 23.08.16
 
-%% variables
-% k_ID
-% par: array of vectors: each vector containing the paramter values of the model
-% opt: struct containing infos about the model
-% resultsPath: path where to store results
-% Ntrees: number of trees that should be simulated
-% obsTimes: times till when the trees should be simulated
-% optDistr: 'exp' if all times should be exponentially distributed and 'erlang' if times should (partly) be erlang distributed
-% optPlot: true if trees should be plotted
-% optSave: true if reuslts (and plots) should be saved
+% path='/Users/lisa.bast/Documents/MATLAB_WD/NeurogenesisModel/ME_Modeling_MS_Optimization/neurogenesisRatesEstimation/results_MS_fit_T_B_N_only__2NB_states_noPL_pB1_0.55_young adult_42/bestBICmodels/1st/young_adult/2nd_a_sA_sPB_3o_2B_S_atS__T_stS__B_stS';
+% path='/Users/lisa.bast/Documents/MATLAB_WD/NeurogenesisModel/ME_Modeling_MS_Optimization/neurogenesisRatesEstimation/results_MS_fit_T_B_N_only__2NB_states_noPL_pB1_0.55_young adult_42/bestBICmodels/2nd/young_adult/2nd_a_sA_sPB_3o_2B_S_astS__T_stS__B_stS';
+% path='/Users/lisa.bast/Documents/MATLAB_WD/NeurogenesisModel/ME_Modeling_MS_Optimization/neurogenesisRatesEstimation/results_MS_fit_T_B_N_only__2NB_states_noPL_pB1_0.55_young adult_42/bestBICmodels/3rd/young_adult/2nd_a_sA_sPB_3o_2B_S_dtS__T_stS__B_stS';
+
 
 addpath(genpath('/Users/lisa.bast/Documents/MATLAB_WD/Tools'));
+
+cells=[];
+AK.maxDiv_count=0; %counts how often abbruchkriterium 'max number of divisions reached' greift
+AK.allNodes_count =0; %counts how often abbruchkriterium 'all nodes checked' greift
+AK.bornTooLate_count = 0; %counts how often abbruchkriterium 'cell is born later than observed time' greift
+%corresponting tree id's:
+AK.maxDiv_id=[];
+AK.allNodes_id=[];
+AK.bornTooLate_id=[];
 cloneStats=[];
+cellFrequency = cell(length(obsTimesFrequency),1);
+cellNumbers = cell(length(obsTimesFrequency),1);
 
-if any(opt.n~=1) 
-    error('this function is not appropriate for intermediate states. Use function plotResultingTrees instead.'); 
-end
+%% NEW:
+% cloneStats{numTrees}.subcloneCount
+% cloneStats{numTrees}.activityDuration.generations(subclone_id)
+% cloneStats{numTrees}.activityDuration.hours(subclone_id)
+% cloneStats{numTrees}.subclonalAmplification
+% cloneStats{numTrees}.subcloneGenerationFrequency
+% cloneStats{numTrees}.clonalLifespan
+% cloneStats{numTrees}.TAP_div.max
+% cloneStats{numTrees}.TAP_div.mean
+% cloneStats{numTrees}.TAP_div.raw
+% cloneStats{numTrees}.NBI_div.max
+% cloneStats{numTrees}.NBI_div.mean
+% cloneStats{numTrees}.NBI_div.raw
+% cloneStats{numTrees}.subcloneBranchLength
+% cloneStats{numTrees}.subcloneExpansionDuration
 
-%description of states --> determine names in tree type
+% currentD = cd();
+% cd(path)
+% load('workspace_variables.mat','parameters','opt');
+% cd(currentD);
+% 
+% theta = parameters.MS.par(:,1);
+% %transform theta to linear scale:
+% switch opt.scale
+%     case 'log'
+%         theta=exp(theta);
+%     case 'partly_log'
+%         theta(opt.scaleVec)=exp(theta(opt.scaleVec));
+% end
+
+if any(opt.n~=1) error('this function is not appropriate for intermediate states. Use function plotResultingTrees instead.'); end
+
+%% simulate trees
+%description of states
 for i=1:length(opt.modelStates)
     s{i}=opt.modelStates{i}(1);
 end
-s{end-1}='b';
+if opt.NB3death
+    s{end-2}='b';
+    s{end-1}='o';
+else
+    s{end-1}='b';
+end
 
-%means for distribution of transition times are stored in lambda_t
 theta=par{k_ID};
 ts=cell2mat(s);%strcat(s);
 if size(ts,1)>size(ts,2) ts=ts'; end
@@ -72,10 +92,27 @@ end
 lambda_t = [lambda_t; theta(sstr_S)];
 lambda_t = [lambda_t; theta(sstr_T)];
 lambda_t = [lambda_t; theta(sstr_B)];
-    
-lambda_t = [lambda_t; 
-            theta(find(strwcmp(opt.rates','r_*B_N*')));
-            theta(find(strwcmp(opt.rates','*death*')))];
+
+p_N=[];
+if opt.NB3death
+    lambda_t = [lambda_t; 
+                theta(find(strwcmp(opt.rates','r_*B_N*')));
+                1000]; 
+    p_N = theta(find(strcmp(opt.rates','p_{N}')));
+else
+    lambda_t = [lambda_t; 
+                theta(find(strwcmp(opt.rates','r_*B_N*')));
+                theta(find(strwcmp(opt.rates','*death*')))];
+end
+
+%for which cell type is cell death considered?
+if opt.Ndeath
+    cellID_death = length(s);
+elseif opt.NB2death || opt.NB3death
+    cellID_death = length(s)-1;
+else %no cell death at all
+    cellID_death = length(s)+1; %condition will never be fulfilled
+end
 
 if opt.setP_B == true %probability for TAPs to differentiate into B1 was set 
     pB1 =  opt.pB1;
@@ -83,7 +120,7 @@ else
     pB1 = theta(find(strcmp(opt.rates','p_{B1}')));
 end
 
-%build matrix of probability values for cell divisions
+%build matrix of probability values
 p_mat=[];
 num_S_comp = sum(strwcmp(opt.modelStates,'*S*')); %number of stem cell compartments
 for i=1:3 %number of dividing cells
@@ -121,8 +158,19 @@ P = cumsum(p_mat,2);
 P = [P; zeros(1,b)];
 P = [P, ones(a+1,1)];
 
-%proportion of stem cells starting as quiescent or dormant --> determine
-%probaility for root cell to be dS, qS or aS
+if opt.NB3death
+    [a,b]=size(P);
+    P = [P; zeros(1,b)];
+    P = [P, ones(a+1,1)];
+end
+
+%exponential rates for neuron death and stem cell activation     
+% lambda_t_qS = 1/theta(1); %time till 1 qS becomes activated is exp(lambda_t_qS) or erlang(lambda_t_qS,n(1)) distributed
+% lambda_t_aS = 1/theta(2); %time till 1 aS divides is exp(lambda_t_aS) or erlang(lambda_t_aS,n(2)) distributed
+% lambda_t_I = 1/theta(3); %time till 1 I divides is exp(lambda_t_I) or erlang(lambda_t_I,n(3)) distributed
+% lambda_t_N = 1/theta(11); %time till 1 neuron dies is exp(lambda_t_N) or erlang(lambda_t_N,n(5)) distributed
+  
+%proportion of stem cells starting as quiescent or dormant
 if any(strwcmp(opt.modelStates,'D*'))
     p_dS0 = theta(find(strwcmp(opt.rates','p*D0*')));
 else
@@ -130,21 +178,12 @@ else
 end
 p_qS0 = theta(find(strwcmp(opt.rates','p*Q0*')));
 
-%set variables for stopping criteria: 
+%variables for stopping criteria: 
 v=0:15;%16 generations
-break_idx = sum(2.^v);%number of max divisions (corresponds to 16 generations)
+break_idx = sum(2.^v);% 131071; %number of max divisions (corresponds to 16 generations)
 hv=1; 
-AK.maxDiv_count=0; %counts how often abbruchkriterium 'max number of divisions reached' greift
-AK.allNodes_count =0; %counts how often abbruchkriterium 'all nodes checked' greift
-AK.bornTooLate_count = 0; %counts how often abbruchkriterium 'cell is born later than observed time' greift
-%corresponting tree id's:
-AK.maxDiv_id=[];
-AK.allNodes_id=[];
-AK.bornTooLate_id=[];
 
-cells=[];
 
-%in case clonal statistics/ genealogical metrics should be calculated
 if strcmp(optPlot,'statistics') 
     subclone_IDs=cell(Ntrees,1);
 end
@@ -159,9 +198,11 @@ for j=1:length(obsTimes)
     %initialize subclone_ID array:
     while (numTrees <= Ntrees(j))
         aS_decision_div = [];
+        N_decision = [];
         %define 4 trees: 1 for type, 1 for birthTimes, 1 for deathTimes, 1 for
         %division times
-        birthTimes = tree(0);   
+        birthTimes = tree(0);  
+        status = tree('U');
         i=1; %cell counter
         div=1; %cells divide: 1; do not divide:0
         rn_initialState = unifrnd(0,1,1,1);
@@ -189,6 +230,7 @@ for j=1:length(obsTimes)
                 %second activation
                 t_act2 = drawTime(1/lambda_t(2),optDistr,'t_act');%'exp');% %exprnd(1/lambda_t(2),1);
                 birthTimes=birthTimes.addnode(i,t_act1);
+                status = status.addnode(i,'U');
                 type=type.addnode(i,ts(2));
                 deathTimes=deathTimes.addnode(i,t_act1+t_act2);
                 divTimes = divTimes.addnode(i,t_act2);
@@ -204,7 +246,8 @@ for j=1:length(obsTimes)
                     end
                 else
                     %active stem cell
-                    birthTimes=birthTimes.addnode(i,t_act1+t_act2); 
+                    birthTimes=birthTimes.addnode(i,t_act1+t_act2);
+                    status = status.addnode(i,'U');
                     type=type.addnode(i,ts(3));
                     % decide weather it gets inactivaed or starts to
                     % divide:           
@@ -253,7 +296,8 @@ for j=1:length(obsTimes)
                 end
             else
                 %active stem cell
-                birthTimes=birthTimes.addnode(i,t_act2);   
+                birthTimes=birthTimes.addnode(i,t_act2);  
+                status = status.addnode(i,'U');
                 type=type.addnode(i,ts(l_idx));
                 % decide weather it gets inactivaed or starts to
                 % divide:
@@ -329,11 +373,12 @@ for j=1:length(obsTimes)
                             %set up child node (QS)
                             child = parent_type-1;
                             type=type.addnode(i,ts(child));
-                            t_act2 = drawTime(1/lambda_t(l_idx),optDistr,'t_act');%'exp');%exprnd(1/lambda_t(parent_type),1); %time as would get activated
+                            t_act2 = drawTime(1/lambda_t(l_idx-1),optDistr,'t_act');%'exp');%exprnd(1/lambda_t(parent_type),1); %time as would get activated
                             divTimes=divTimes.addnode(i,t_act2);
                             b=birthTimes.get(i)+divTimes.get(i);    
                             if (b<=obsTimes(j)) %&& decision %stem cell parent is active && daughter cells are "born" after tmax? 
                                 birthTimes = birthTimes.addnode(i,b);
+                                status = status.addnode(i,'U');
                                 %death times
                                 deathTimes = deathTimes.addnode(i,b+t_act2);
                                 i=i+1;
@@ -377,6 +422,7 @@ for j=1:length(obsTimes)
 
                         if (b<=obsTimes(j)) %&& decision %stem cell parent is active && daughter cells are "born" after tmax? 
                             birthTimes = birthTimes.addnode(i,b);
+                            status = status.addnode(i,'U');
                             %death times
                             deathTimes = deathTimes.addnode(i,b+min(t_div,t_inact));
                             %new subclone --> update subcloneCount
@@ -443,38 +489,97 @@ for j=1:length(obsTimes)
                                     child2=child2+1;
                                 end
                            case 4 %only entered for B2
+                                child1 = parent_type+1;
+                                child2 = [];
+                           case 5 % only entered for B3 (if it exists)
+                                if N_decision(N_decision(:,1)==i,2)==1
                                     child1 = parent_type+1;
-                                    child2 = [];
+                                else
+                                    child1=[];
+                                end
+                                child2 = [];
                         end
-                        %type, division times
-                        type=type.addnode(i,ts(child1));
-                        if child1==6
-                            lifeTime_child1=drawTime(1/lambda_t(child1+1),optDistr,'t_B_N');%'exp');
-                        elseif child1==7
-                            lifeTime_child1=drawTime(1/lambda_t(child1+1),optDistr,'t_death');%'exp');
-                        elseif child1==3
-                            child_idx = type.getchildren(i);
-                            t_div=drawTime(1/lambda_t(child2+1),optDistr,'t_div');
-                            t_inact = drawTime(1/lambda_t(parent_type),optDistr,'t_inact');%time at which as would get inactivated
-                            lifeTime_child1 = min(t_div, t_inact);
-                            if t_div<t_inact
-                                aS_decision_div = [aS_decision_div;...
-                                                   child_idx(1) 1];
+                        if ~isempty(child1)
+                            %type, division times
+                            type=type.addnode(i,ts(child1));
+                            status_child1='U';
+                            if child1==6 % NB II
+                                lifeTime_child1=drawTime(1/lambda_t(child1+1),optDistr,'t_B_N');%'exp'); %NB II migrating
+                                if child1==cellID_death %NB II migrating and then dying
+                                    lifeTime_child1_d = drawTime(1/lambda_t(child1+1),optDistr,'t_B_N') + drawTime(1/lambda_t(child1+1),optDistr,'t_death');%'exp');
+                                    if lifeTime_child1_d < lifeTime_child1
+                                        status_child1 = 'D';
+                                        lifeTime_child1 = lifeTime_child1_d;
+                                    end
+                                end
+                            elseif child1==cellID_death && ~opt.NB3death % N dying
+                                    lifeTime_child1=drawTime(1/lambda_t(child1+1),optDistr,'t_death');%'exp');
+                                    status_child1 = 'D';
+                            elseif child1==7 && cellID_death==6 && ~opt.NB3death
+                                lifeTime_child1 = obsTimes(j);
+                            elseif child1==7 && opt.NB3death %NB III dying
+                                lifeTime_child1=drawTime(1/lambda_t(child1+1),optDistr,'t_death');%'exp');
+                                c_idx = type.getchildren(i);
+                                if rand<=p_N
+                                    N_decision = [N_decision;...
+                                                  c_idx(1)  1];
+                                else
+                                    N_decision = [N_decision;...
+                                                  c_idx(1) 0];
+                                    status_child1 = 'D';          
+                                end
+                            elseif child1==8 && cellID_death==7 && opt.NB3death %N not dying
+                                lifeTime_child1 = obsTimes(j);
+                                status_child1 = 'D'; %tree build should stop
+                            elseif child1==3
+                                child_idx = type.getchildren(i);
+                                t_div=drawTime(1/lambda_t(child2+1),optDistr,'t_div');
+                                t_inact = drawTime(1/lambda_t(parent_type),optDistr,'t_inact');%time at which as would get inactivated
+                                lifeTime_child1 = min(t_div, t_inact);
+                                if t_div<t_inact
+                                    aS_decision_div = [aS_decision_div;...
+                                                       child_idx(1) 1];
+                                else
+                                    aS_decision_div = [aS_decision_div;...
+                                                       child_idx(1) 0];
+                                end  
                             else
-                                aS_decision_div = [aS_decision_div;...
-                                                   child_idx(1) 0];
-                            end  
-                        else
-                            
-                            lifeTime_child1=drawTime(1/lambda_t(child1+1),optDistr,'t_div');%exprnd(1/lambda_t(child1+1),1); %getErlangDistributedRV(lambda_t(child1), n(child1), 1);
+                                lifeTime_child1=drawTime(1/lambda_t(child1+1),optDistr,'t_div');%exprnd(1/lambda_t(child1+1),1); %getErlangDistributedRV(lambda_t(child1), n(child1), 1);
+                            end
+                            divTimes=divTimes.addnode(i,lifeTime_child1);
                         end
-                        divTimes=divTimes.addnode(i,lifeTime_child1);
                         if ~isempty(child2)
                             type=type.addnode(i,ts(child2));
-                            if child2==6
-                                lifeTime_child2=drawTime(1/lambda_t(child2+1),optDistr,'t_B_N');%'exp');
-                            elseif child2==7
+                            status_child2='U';
+                            if child2==6 %NB II
+                                lifeTime_child2=drawTime(1/lambda_t(child2+1),optDistr,'t_B_N');%'exp'); % NB II migrating
+                                if child2==cellID_death %NB II migrating and dying
+                                    lifeTime_child2_d = drawTime(1/lambda_t(child2+1),optDistr,'t_B_N') + drawTime(1/lambda_t(child2+1),optDistr,'t_death');%'exp');
+                                    if lifeTime_child2_d<lifeTime_child2
+                                        status_child2 = 'D';
+                                        lifeTime_child2=lifeTime_child2_d;
+                                    end
+                                end
+                            elseif child2==cellID_death && ~opt.NB3death %N dying
                                 lifeTime_child2=drawTime(1/lambda_t(child2+1),optDistr,'t_death');%'exp');
+                                status_child2 = 'D';
+                            elseif child2==7 && cellID_death==6 && ~opt.NB3death %N not dying
+                                lifeTime_child2 = obsTimes(j);
+                            elseif child2==7 && opt.NB3death % N dying
+                                status_child2 = 'D';
+                                lifeTime_child2=drawTime(1/lambda_t(child2+1),optDistr,'t_death');%'exp');
+                                c_idx = type.getchildren(i);
+                                if rand<=p_N
+                                    N_decision = [N_decision;...
+                                                  c_idx(2)  1];
+                                else
+                                    N_decision = [N_decision;...
+                                                  c_idx(2) 0];
+                                    status_child2 = 'D';
+                                end
+                            elseif child2==8 && cellID_death==7 && opt.NB3death %N not dying
+                                lifeTime_child2 = obsTimes(j);
+                                status_child2 = 'D'; %tree build should stop
                             elseif child2==3
                                 child_idx = type.getchildren(i);
                                 t_div=drawTime(1/lambda_t(child2+1),optDistr,'t_div');
@@ -493,19 +598,25 @@ for j=1:length(obsTimes)
                             divTimes=divTimes.addnode(i,lifeTime_child2);
                         end
                         %birth times
-                        b=birthTimes.get(i)+divTimes.get(i);    
-                        if (b<=obsTimes(j)) %&& decision %stem cell parent is active && daughter cells are "born" after tmax? 
-                            birthTimes = birthTimes.addnode(i,b);
-                            %death times
-                            deathTimes = deathTimes.addnode(i,b+lifeTime_child1);
+                        b = birthTimes.get(i)+divTimes.get(i); 
+                        if (b<=obsTimes(j)) && strcmp(status.get(i),'U') %&& decision %stem cell parent is active && daughter cells are "born" after tmax? 
+                            if ~isempty(child1)
+                                birthTimes = birthTimes.addnode(i,b);
+                                %death times
+                                deathTimes = deathTimes.addnode(i,b+lifeTime_child1);
+                                status = status.addnode(i,status_child1);
+                            end
                             if ~isempty(child2)
                                 birthTimes = birthTimes.addnode(i,b);
                                 deathTimes = deathTimes.addnode(i,b+lifeTime_child2);
+                                status = status.addnode(i,status_child2);
                             end
                         else
                             %remove child nodes from division times and type
-                            type=type.removenode(nnodes(type));
-                            divTimes=divTimes.removenode(nnodes(divTimes));
+                            if ~isempty(child1)
+                                type=type.removenode(nnodes(type));
+                                divTimes=divTimes.removenode(nnodes(divTimes));
+                            end
                             if ~isempty(child2)
                                 type=type.removenode(nnodes(type));
                                 divTimes=divTimes.removenode(nnodes(divTimes));
@@ -532,32 +643,41 @@ for j=1:length(obsTimes)
     %         for j=1:length(obsTimes)
                 if hv==1 % only trees with proper number of cells can enter the result matrix cells
                     i_living = find(deathTimes>=obsTimes(j) & birthTimes<=obsTimes(j));
-                    i_1=0;
-                    i_2=0;
-                    i_3=0;
-                    i_4=0;
-                    i_5=0;
-                    i_6=0;
-                    i_7=0;
-                    for m=i_living
-                        if strcmp(type.get(m),ts(1)); i_1 = i_1+1;
-                        elseif strcmp(type.get(m),ts(2)); i_2= i_2+1;
-                        elseif strcmp(type.get(m),ts(3)); i_3 = i_3+1;
-                        elseif strcmp(type.get(m),ts(4)); i_4 = i_4+1;
-                        elseif strcmp(type.get(m),ts(5)); i_5 = i_5+1;
-                        elseif strcmp(type.get(m),ts(6)); i_6 = i_6+1;
-                        else i_7 = i_7+1;
+                    if (~isempty(obsTimesFrequency)&&all(obsTimesFrequency)<obsTimes(j))
+                        i_living_f = cell(length(obsTimesFrequency),1);
+                        i_f = cell(length(obsTimesFrequency),1);
+                        for F_ID=1:length(obsTimesFrequency)
+%                             cellFrequency{F_ID}=[];
+                            i_living_f{F_ID} = find(deathTimes>=obsTimesFrequency(F_ID) & birthTimes<=obsTimesFrequency(F_ID));
+                            i_f{F_ID} = zeros(1,3);
+                            for n=i_living_f{F_ID}
+                                if strcmp(type.get(n),'T'); i_f{F_ID}(1) = i_f{F_ID}(1)+1;
+                                elseif (strcmp(type.get(n),'B') || strcmp(type.get(n),'b') || strcmp(type.get(n),'o')); i_f{F_ID}(2) = i_f{F_ID}(2)+1;
+                                elseif strcmp(type.get(n),'N'); i_f{F_ID}(3) = i_f{F_ID}(3)+1;
+                                end
+                            end
+                            if all(i_f{F_ID}==0)
+                                cellFrequency{F_ID} = [cellFrequency{F_ID}; [i_f{F_ID} numTrees]];
+                                cellNumbers{F_ID} = [cellNumbers{F_ID}; [i_f{F_ID} numTrees]];
+                            else
+                                cellFrequency{F_ID} = [cellFrequency{F_ID}; [i_f{F_ID}./sum(i_f{F_ID}) numTrees]];
+                                cellNumbers{F_ID} = [cellNumbers{F_ID}; [i_f{F_ID} numTrees]];
+                            end
                         end
                     end
-                    if length(ts)==7
-                        cells = [cells; i_1 i_2 i_3 i_4 i_5 i_6 i_7 obsTimes(j)];
-                    elseif length(ts)==6
-                        cells = [cells; i_1 i_2 i_3 i_4 i_5 i_6 obsTimes(j)];
-                    elseif length(ts)==5
-                        cells = [cells; i_1 i_2 i_3 i_4 i_5 obsTimes(j)];
-                    elseif length(ts)==4
-                        cells = [cells; i_1 i_2 i_3 i_4 obsTimes(j)];
+                    i_c=zeros(1,length(ts));
+                    for m=i_living
+                        if strcmp(type.get(m),ts(1)); i_c(1) = i_c(1)+1;
+                        elseif strcmp(type.get(m),ts(2)); i_c(2)= i_c(2)+1;
+                        elseif strcmp(type.get(m),ts(3)); i_c(3) = i_c(3)+1;
+                        elseif strcmp(type.get(m),ts(4)); i_c(4) = i_c(4)+1;
+                        elseif strcmp(type.get(m),ts(5)); i_c(5) = i_c(5)+1;
+                        elseif strcmp(type.get(m),ts(6)); i_c(6) = i_c(6)+1;
+                        elseif strcmp(type.get(m),ts(7)); i_c(7) = i_c(7)+1;
+                        else; i_c(8) = i_c(8)+1;
+                        end
                     end
+                    cells = [cells; i_c obsTimes(j)];
                 end
 
                 %store t_act
@@ -581,7 +701,11 @@ for j=1:length(obsTimes)
 %                     subplot(ceil(sqrt(Ntrees)), floor(sqrt(Ntrees)),numTrees); 
                     [vlh, hlh, tlh] = type.plot(divTimesPlot, 'YLabel','Division Time (days)','DrawLabels',false);
     %                 [vlh, hlh, tlh] = type.plot(divTimes, 'YLabel','Division Time (hours)');
-                      c=[128 128 128; 102 178 255; 0 76 153; 105 191 191; 209 146 199; 128 95 128; 255 188 0]/256;
+                    if opt.NB3death
+                      c=[128 128 128; 102 178 255; 0 76 153; 105 191 191; 209 146 199; 128 95 128; 80 80 80; 255 188 0]/256;
+                    else
+                      c=[128 128 128; 102 178 255; 0 76 153; 105 191 191; 209 146 199; 128 95 128; 255 188 0]/256;  
+                    end
 %                     c=[187 205 223; 89 114 172; 3 6 97; 105 191 191; 209 146 199; 128 95 128; 255 188 0]/256;
         %             [3 6 97; 28 60 164; 153 204 255;   %NSC colors
         %           114 155 155; 0 204 204; 164 246 246; %TAP colors
@@ -600,23 +724,7 @@ for j=1:length(obsTimes)
                 if isempty(subclone_IDs{numTrees})
                     subclone_root_tree=[];
                 end
-                %% clone statistics are calculated:
-                % cloneStats{numTrees}.subcloneCount
-                % cloneStats{numTrees}.activityDuration.generations(subclone_id)
-                % cloneStats{numTrees}.activityDuration.hours(subclone_id)
-                % cloneStats{numTrees}.subclonalAmplification
-                % cloneStats{numTrees}.subcloneGenerationFrequency
-                % cloneStats{numTrees}.clonalLifespan
-                % cloneStats{numTrees}.TAP_div.max
-                % cloneStats{numTrees}.TAP_div.mean
-                % cloneStats{numTrees}.TAP_div.raw
-                % cloneStats{numTrees}.NBI_div.max
-                % cloneStats{numTrees}.NBI_div.mean
-                % cloneStats{numTrees}.NBI_div.raw
-                % cloneStats{numTrees}.subcloneBranchLength
-                % cloneStats{numTrees}.subcloneExpansionDuration
-                cloneStats{numTrees} = calculateCloneStatistics(cloneStats{numTrees},subclone_IDs{numTrees},subclone_root_tree,birthTimes,deathTimes,type);
-            
+                cloneStats{numTrees} = calculateCloneStatistics(cloneStats{numTrees},subclone_IDs{numTrees},subclone_root_tree,birthTimes,deathTimes,type,s,opt);
             end 
             numTrees=numTrees+1; %current number of trees
     end
@@ -629,11 +737,12 @@ end
 if strcmp(optPlot,'tree') %|| optPlot.statistics==true 
     if optSave == true
         if k_ID==1
-            add_folder = '/trees/young';
+            add_folder = '/young';
         else
-            add_folder = '/trees/old';
+            add_folder = '/old';
         end
-        opt.resultsPath = strcat(resultsPath,add_folder);
+%         opt.resultsPath = strcat(resultsPath{k_ID},'/sim_trees',add_folder);
+        opt.resultsPath = strcat(resultsPath,'/sim_trees',add_folder);
         if exist(opt.resultsPath, 'dir')==0
             mkdir(opt.resultsPath);
         end

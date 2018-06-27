@@ -41,6 +41,12 @@ opt.tcc.B = 'tccS';
 opt.rates = getRates(opt,'input');
 num_r=length(opt.rates);
 
+
+if strcmp(opt.dataSet,'both')
+    opt.ID_y = sort([find(strcmp(opt.rates,opt.identicalRates_str)), find(strwcmp(opt.rates,'*_y*'))]);
+    opt.ID_o = sort([find(strcmp(opt.rates,opt.identicalRates_str)), find(strwcmp(opt.rates,'*_o*'))]);
+end
+
 if (length(opt.theta_test)~=num_r)&& strwcmp(opt.app,'*test')
     disp('the rates are: ')
     disp(opt.rates);

@@ -4,15 +4,24 @@
 
 function [logL,dlogLdxi,Happ,res] = logL__N(xi,D,opt)
 
-ym = D.ym;
-t = D.t;
-sigma2 = D.sigma2;
-
+if strcmp(opt.dataSet,'both')
+    ym = [D.y.ym; D.o.ym];
+    t = [D.y.t; D.o.t];
+    sigma2 = [D.y.sigma2; D.o.sigma2];
+else
+    ym = D.ym;
+    t = D.t;
+    sigma2 = D.sigma2;
+end
 n_xi = length(xi);% parameters
 n_y = size(ym,2);% dimension of output 
 N = size(ym,1); %number of time points
+
+%transform theta back to linear scale
+theta = transformParBack(xi, opt);
+
 %% Model simulation
-[y,Sy,status] = sim__N(xi,t,opt);
+[y,Sy,status] = sim__N(theta,t,opt);
 if ~isempty(opt.fitVec)
     n_y=sum(opt.fitVec);
     y = y(:,opt.fitVec==1);
@@ -20,7 +29,6 @@ if ~isempty(opt.fitVec)
     ym = ym(:,opt.fitVec==1);
     sigma2 = sigma2(:,opt.fitVec==1);
 end
-
 if status<0
     logL = -Inf;
     dlogLdxi = zeros(n_xi,1); % gradient of log-likelihood
@@ -29,10 +37,8 @@ if status<0
     return
 end
 
-
 % % Simulation
 dydxi=zeros(size(Sy));
-theta = transformParBack(xi, opt);
 switch opt.scale
     case 'none'
         dydxi = Sy(:,:,:); 

@@ -1,4 +1,4 @@
-function [R] = getBICVals(path_str,str_b)
+function [R] = getBICVals(path_str,str_b,add_str)
 
 cPath = cd();
 top_nr=[1:20]';
@@ -24,7 +24,7 @@ for i=1:max(size(path_str))%group index: young and old
                     T_str = strcat('T_',div_str{i2},tcc_strT{j1});
                     B_str = strcat('B_',div_str{i3},tcc_strB{j1});
 
-                    str_combi = strcat(str_blank,S_str,'__',T_str,'__',B_str);
+                    str_combi = strcat(str_blank,S_str,'__',T_str,'__',B_str,add_str);
                     %imread important information
                     cd([path_str{i},strcat(str_b,str_combi)]);
                     load('workspace_variables.mat','result','parameters','opt','data');
@@ -42,7 +42,12 @@ for i=1:max(size(path_str))%group index: young and old
                     end
                     A.rates_str = opt.rates;
                     n_models = length(div_str)^3*length(tcc_strT);
-                    R = addParResult(R,A,n_models,k1,i,i1,i2,i3);
+                    if strcmp(opt.dataSet,'both')
+                        identicalRates_str = opt.identicalRates_str;
+                    else
+                        identicalRates_str = ' '; 
+                    end
+                    R = addParResult(R,A,n_models,k1,i,i1,i2,i3,identicalRates_str,opt.dataSet);
                     R{i}.BIC(k1) = result.BIC;
                     R{i}.logL(k1) = result.logPost(1); 
                     R{i}.model_str{k1} = str_combi;

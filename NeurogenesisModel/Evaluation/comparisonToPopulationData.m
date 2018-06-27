@@ -1,33 +1,51 @@
-function [] = comparisonToPopulationData(R,resultsPath)
+function [] = comparisonToPopulationData(R,resultsPath,add_str,opt_averagePar)
 %compare 1st order moment (mean) of weighted average model to population data
 
 %get population level data
 data_pop = getPopulationLevelData();
 
 %copy opt from most general model
-sim_model = 'S_astS__T_astS__B_astS';
+sim_model = ['S_astS__T_astS__B_astS',add_str];
 opt = R{1}.OPT{strcmp(R{1}.model_str,sim_model)};
 
+if isempty(add_str)
+    opt.Ndeath = true;
+    opt.NB2death = false;
+    opt.NB3death = false;
+    opt.identicalRates_str = {' '};
+end
 %set initial values for model to first observed data point
 miceAge_at_t0 = data_pop.age(1); %hours
 id_a=find(data_pop.age==miceAge_at_t0);
 opt.setInitialConds = true;
-opt.initialVals = [data_pop.S(id_a)-data_pop.AS(id_a)-data_pop.QS(id_a),data_pop.QS(id_a), data_pop.AS(id_a), data_pop.TAP(id_a), data_pop.NB1(id_a), data_pop.NB2(id_a), 0];
-
+if strcmp(add_str,'_NB3')
+    opt.initialVals = [data_pop.S(id_a)-data_pop.AS(id_a)-data_pop.QS(id_a),data_pop.QS(id_a), data_pop.AS(id_a), data_pop.TAP(id_a), data_pop.NB1(id_a), data_pop.NB2(id_a), 0, 0];
+else
+    opt.initialVals = [data_pop.S(id_a)-data_pop.AS(id_a)-data_pop.QS(id_a),data_pop.QS(id_a), data_pop.AS(id_a), data_pop.TAP(id_a), data_pop.NB1(id_a), data_pop.NB2(id_a), 0];
+end
 %set order of moments to 1
 opt.order = 1;
 
-opt.addfolderstr = '_AverageModel';
+if opt_averagePar
+    opt.addfolderstr = '_AverageModel';
+end
 opt.RUN_N_dir = cd();
 opt.CERENApath = '/Users/lisa.bast/Documents/MATLAB_WD/class_1/Tools/CERENA/examples/neurogenesis/';
 %chose option halfway migration (Daynac et al. observed celly only in first half
 %of SEZ)
 opt.halfwayMigration = true; %NBII migration will be twice as fast which is equivalent to tavelling only half the way
 
+if opt.Ndeath || opt.NB2death
+    opt.NB3death=false;
+end
 %want also output for stem cells, 2 neuroblast states should be summed up:
-opt.outVec = ones(1,length(opt.modelStates)-1);
-opt.outVec(end-1)=2;
-
+if opt.NB3death
+    opt.outVec = ones(1,length(opt.modelStates)-2);
+    opt.outVec(end-1)=3;
+else
+    opt.outVec = ones(1,length(opt.modelStates)-1);
+    opt.outVec(end-1)=2;
+end
 %get weighted average parameters, parameter boundaries and names
 idx=[];
 for i=1:length(opt.rates)
@@ -36,44 +54,47 @@ end
 par_min = R{1}.parMin_vec(idx);
 par_max = R{1}.parMax_vec(idx);
 par_names = opt.rates;
-par_young = R{1}.par_mean(idx);
-par_old = R{2}.par_mean(idx);
+if opt_averagePar
+    par_young = R{1}.par_mean(idx);
+    par_old = R{2}.par_mean(idx);
+end
 
 %for age-dependent model: determine which parameters change
 opt.ageDepPars = find(round(log(par_young./par_old).*100)./100~=0);
 opt.ageDepPars(sum(opt.ageDepPars==find(strwcmp(par_names,'pB1*')),2)==1) = [];%pB1_* probabilities barely change
 
+
 %age of mice in labeling experiment:
 age_young = 2.5*30*24-miceAge_at_t0;
 age_old = 12*30*24-miceAge_at_t0;
 
-% estimate hill coefficients
-for id=1:length(par_young)
-    if any(opt.ageDepPars==id)
-        [y_min_r,y_max_r,n,s] = estimateHillCoeffs(par_young(id),par_old(id),age_young,age_old,par_min(id),par_max(id),par_names(id));
-        %shift s-1 by +miceAge_at_t0
-        opt.hillcoeffs{id} = [y_min_r,y_max_r,n,1/(1/s+miceAge_at_t0),s];
-    else
-        opt.hillcoeffs{id} = [];
-    end
-end
-
-%% plot parameter changes: hill functions
-plotHillFunctionFits(par_names,par_young,par_old,opt,age_young,age_old,miceAge_at_t0,resultsPath)
-    
 %% plot age-dependent and age-independent model
 %simulate models
-theta = transformPar(par_young,opt);
+theta = par_young;%is required in linear scale
 t_max = 24.2*30*24-miceAge_at_t0;
 t_sim = 0:24:t_max;
-for m_id=1:2
+
+for m_id=1:4
     switch m_id
         case 1%age-dependent model
-            m_str{1}='age-dependent model';  
+            m_str{m_id}='age-dependent model';  
+            [opt] = getHillCoeffs(opt,par_young,par_old,age_young,age_old,par_names,miceAge_at_t0);
+            % plot parameter changes: hill functions
+            %plotHillFunctionFits(par_names,par_young,par_old,opt,age_young,age_old,miceAge_at_t0,resultsPath)
         case 2 %for age-independent model:
-            m_str{2}='age-independent model';
+            m_str{m_id}='age-independent model';
             opt.ageDepPars = [];          
             opt.hillcoeffs = [];
+        case 3 %for aS probabilities age-dependent model
+            %only aS probabilities change
+            opt.ageDepPars = find(strwcmp(par_names,'pAS_*'));
+            m_str{m_id}='model with age-dependent AS division probabilities'; 
+            [opt] = getHillCoeffs(opt,par_young,par_old,age_young,age_old,par_names,miceAge_at_t0);
+        case 4 %for (in)activation age-dependent model
+            %only (in)activation rates change
+            opt.ageDepPars = find(strwcmp(par_names,'*act*'));
+            m_str{m_id}='model with age-dependent (in)activation rates'; 
+            [opt] = getHillCoeffs(opt,par_young,par_old,age_young,age_old,par_names,miceAge_at_t0);
     end
     cd('../')
     save('settings.mat');
@@ -89,23 +110,25 @@ function [] = plotAverageModelVsPopulationData(t_sim,y_sim,miceAge_at_t0,data_po
     opt_plotData = 'error bars';
     % opt_plotData = 'error bands';
 
-    N_models = 2;
+    N_models = size(y_sim,2);
     %specify colors
-    colorMix = [0 0 0; 0 0 0];
+    colorMix = [0 0 0; 0 0 0; 1 0 0; 0 1 0];
     lineType(1) = '-';
     lineType(2) = ':';
-
+    lineType(3) = '-';
+    lineType(4) = '-';
     t_sim = t_sim + miceAge_at_t0;
     t_sim=(t_sim./24)./30;%hours --> months
 
     %% shook used n=5 animals per time point
     %% daynac used at least 4 animals per time point
     n=5;
-
+    k_end = length(opt.outVec)-1;
+    
     figure('units','normalized','position',[0 0 0.3 1])
     for m_id = 1:N_models
-        for k=1:length(opt.outVec)-1
-            if opt.outVec(end-1)~=2
+        for k=1:k_end
+            if opt.outVec(end-1)<2
                 switch k
                     case 1
                         y_obs1 = data_pop.S;
@@ -195,7 +218,7 @@ function [] = plotAverageModelVsPopulationData(t_sim,y_sim,miceAge_at_t0,data_po
             xlabel('age of mice in months');
             if k==1 
                 title('S=DS+QS+AS')
-            elseif k==5 && opt.outVec(end-1)==2
+            elseif k==5 && opt.outVec(end-1)>=2
                 title('NB=NB1+NB2')
             else
                 title(opt.modelStates(k))
@@ -288,4 +311,20 @@ function [] = plotHillFunctionFits(par_names,par_young,par_old,opt,age_young,age
     end
     opt.resultsPath = resultsPath;
     saveFigs(opt,'hillFits');
+end
+
+function [opt] = getHillCoeffs(opt,par_young,par_old,age_young,age_old,par_names,miceAge_at_t0)
+    % estimate hill coefficients
+    for id=1:length(par_young)
+        if any(opt.ageDepPars==id)
+            %if y_min and y_max should be estimated:
+    %         [y_min,y_max,n,s] = estimateHillCoeffs_old(par_young(id),par_old(id),age_young,age_old,par_min(id),par_max(id),par_names(id));
+            %if s and n should be estimated:
+            [y_min,y_max,n,s] = estimateHillCoeffs(par_young(id),par_old(id),age_young,age_old,par_names(id));
+            %shift s-1 by +miceAge_at_t0
+            opt.hillcoeffs{id} = [y_min,y_max,n,1/(1/s+miceAge_at_t0),s];
+        else
+            opt.hillcoeffs{id} = [];
+        end
+    end
 end

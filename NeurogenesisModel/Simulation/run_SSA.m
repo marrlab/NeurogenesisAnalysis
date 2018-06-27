@@ -65,6 +65,6 @@ for i=1:length(dataSet)
     Data{i}.cellnumbers_all = data{i}.raw(:,1:end-1);
     Data{i}.time = data{i}.raw(:,end);
 end
-
-plotCloneSizeComparison(ssa_x,Data,time_vec,dataSet,OPT);
+N_NB = sum(strwcmp(opt.modelStates,'B*'));
+plotCloneSizeComparison(ssa_x,Data,time_vec,dataSet,OPT,N_NB);
 

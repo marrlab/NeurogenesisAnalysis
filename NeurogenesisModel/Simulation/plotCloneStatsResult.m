@@ -62,8 +62,9 @@ function [CC_mat,CC_label] = plotCloneStatsResult(cs1,cs2,plotopt)
                 N_CL = [N_CL, cs{i}.clonalLifespan];
             end
         end
-
+        actDur_d(actDur_d==0)=[];
         subLS(subLS==0)=[];
+        subA(subA==0)=[];
 
         CC{id,1} = N_BL_mean;
         CC_label{1} = 'Mean subclonal branch length in generations';
@@ -88,7 +89,6 @@ function [CC_mat,CC_label] = plotCloneStatsResult(cs1,cs2,plotopt)
 
         CC{id,8}=1./(subgenF(subgenF~=0).*7);
         CC_label{8} = 'Subclone generation time in weeks';
-
 
         CC{id,9}=subED;
         CC_label{9}='AS expansion phase duration in days';
