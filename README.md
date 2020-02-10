@@ -1,8 +1,11 @@
 # NeurogenesisAnalysis
 contains code and data accompanying
 ### Subtle Changes in Clonal Dynamics Underlie the Age-related Decline in Neurogenesis
-by Lisa Bast<sup>1,2,*</sup>, Filippo Calzolari<sup>3,4,5,*,†</sup>, Michael Strasser<sup>1,6</sup>, Jan Hasenauer<sup>1,2</sup>, Fabian Theis<sup>1,2</sup>, Jovica Ninkovic<sup>3,4,†</sup> and Carsten Marr<sup>1,†</sup>
+by Lisa Bast<sup>1,2,\*</sup>, Filippo Calzolari<sup>3,4,5,\*,†</sup>, Michael Strasser<sup>1,6</sup>, Jan Hasenauer<sup>1,2</sup>, Fabian Theis<sup>1,2</sup>, Jovica Ninkovic<sup>3,4,†</sup> and Carsten Marr<sup>1,†</sup>
 
+<sup>\*</sup> Equal contribution
+<sup>†</sup> Correspondence (shared senior authorship)
+ 
 - download the required data from https://hmgubox.helmholtz-muenchen.de/d/dedd78d4e8c6463abfd0/
 - required software: MATLAB (R2017a)
 - usage of Toolboxes:
