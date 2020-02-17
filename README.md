@@ -1,7 +1,8 @@
 # NeurogenesisAnalysis
 contains code and data accompanying
-### Subtle Changes in Clonal Dynamics Underlie the Age-related Decline in Neurogenesis
-by Lisa Bast<sup>1,2,\*</sup>, Filippo Calzolari<sup>3,4,5,\*,†</sup>, Michael Strasser<sup>1,6</sup>, Jan Hasenauer<sup>1,2</sup>, Fabian Theis<sup>1,2</sup>, Jovica Ninkovic<sup>3,4,†</sup> and Carsten Marr<sup>1,†</sup>
+### Increasing Neural Stem Cell Division Asymmetry and Quiescence Are Predicted to Contribute to the Age-Related Decline in Neurogenesis
+
+by Lisa Bast<sup>1,2,\*</sup>, Filippo Calzolari<sup>3,4,5,\*,†</sup>, Michael K. Strasser<sup>1,6</sup>, Jan Hasenauer<sup>1,2</sup>, Fabian Theis<sup>1,2</sup>, Jovica Ninkovic<sup>3,4,†</sup> and Carsten Marr<sup>1,†</sup>
 
 <sup>\*</sup> Equal contribution
 
